@@ -1,0 +1,167 @@
+digraph RestaurantKitchen {
+    rankdir=TB;
+
+    graph [
+        fontname="Arial",
+        label="Restaurant Kitchen — Assignment 4",
+        labelloc=t
+    ];
+
+    node [
+        shape=record,
+        fontname="Arial",
+        fontsize=11
+    ];
+
+    edge [
+        fontname="Arial",
+        fontsize=9
+    ];
+
+    Main [label="Main (Client)|main()"];
+
+    RestaurantFacade [
+        label="RestaurantFacade|start()\lresume()\lrecoverAll()\lcancel()\l"
+    ];
+
+    AdminFacade [
+        label="AdminFacade|inspect()\loccupyAllStations()\lreleaseDemoStations()\lcancel()\lfinishKitchen()\l"
+    ];
+
+    subgraph clusterA {
+        label="A: Orders and Inventory";
+
+        Order [
+            label="Order|id, dish, quantity, address\lstatus, reservation\l|reserve()\lconfirm()\lcancel()\lreject()\l"
+        ];
+
+        OrderQueue [
+            label="OrderQueue|reserve()\lconfirm()\lcancel()\lstock()\l"
+        ];
+
+        InventoryChecker [
+            label="InventoryChecker|recipe()\lavailable()\lenough()\l"
+        ];
+
+        OrderRepository [
+            label="OrderRepository|find()\lfindAll()\lsave()\l"
+        ];
+
+        OrderStatus [
+            label="OrderStatus|NEW\lRESERVED\lCONFIRMED\lCANCELLED\lREJECTED\l"
+        ];
+
+        OrderException [label="OrderException"];
+    }
+
+    subgraph clusterB {
+        label="B: Kitchen";
+
+        KitchenTask [
+            label="KitchenTask|id, dish, quantity, station, status|ready()\lconfirm()\lcancel()\lfinish()\lreject()\l"
+        ];
+
+        CookingStationAllocator [
+            label="CookingStationAllocator|prepare()\lisBusy()\lconfirm()\lcancel()\lfinish()\l"
+        ];
+
+        QualityChecker [
+            label="QualityChecker|stationFor()\lcheck()\l"
+        ];
+
+        KitchenRepository [
+            label="KitchenRepository|find()\lfindAll()\lsave()\l"
+        ];
+
+        KitchenStatus [
+            label="KitchenStatus|REQUESTED\lREADY\lCONFIRMED\lFINISHED\lCANCELLED\lREJECTED\l"
+        ];
+
+        KitchenException [label="KitchenException"];
+    }
+
+    subgraph clusterC {
+        label="C: Billing and Delivery";
+
+        Checkout [
+            label="Checkout|id, total, address, deliveryId, status|pay()\lfail()\ldispatch()\l"
+        ];
+
+        BillingModule [
+            label="BillingModule|total()\lcharge()\l"
+        ];
+
+        DeliveryDispatcher [
+            label="DeliveryDispatcher|complete()\lfind()\lall()\l"
+        ];
+
+        CheckoutRepository [
+            label="CheckoutRepository|find()\lfindAll()\lsave()\l"
+        ];
+
+        CheckoutStatus [
+            label="CheckoutStatus|NEW\lPAID\lDISPATCHED\lFAILED\l"
+        ];
+
+        PaymentException [label="PaymentException"];
+    }
+
+    ChainProgress [
+        label="ChainProgress|request, payment choice, status, events|move()\lisFinished()\l"
+    ];
+
+    ChainProgressRepository [
+        label="ChainProgressRepository|find()\lfindAll()\lsave()\l"
+    ];
+
+    ChainStatus [label="ChainStatus"];
+    JsonFiles [label="JsonFiles|read()\lwrite()\l"];
+
+    Main -> {RestaurantFacade AdminFacade};
+
+    RestaurantFacade -> {
+        OrderQueue
+        CookingStationAllocator
+        DeliveryDispatcher
+        ChainProgressRepository
+    };
+
+    AdminFacade -> {
+        RestaurantFacade
+        OrderQueue
+        CookingStationAllocator
+        DeliveryDispatcher
+        ChainProgressRepository
+    };
+
+    OrderQueue -> {OrderRepository InventoryChecker};
+    OrderQueue -> Order [style=dashed];
+    InventoryChecker -> Order [style=dashed];
+    OrderRepository -> Order [style=dashed];
+    Order -> OrderStatus [style=dashed];
+    OrderQueue -> OrderException [style=dashed, label="throws"];
+
+    CookingStationAllocator -> {KitchenRepository QualityChecker};
+    CookingStationAllocator -> KitchenTask [style=dashed];
+    KitchenRepository -> KitchenTask [style=dashed];
+    KitchenTask -> KitchenStatus [style=dashed];
+    QualityChecker -> KitchenException [style=dashed, label="throws"];
+    CookingStationAllocator -> KitchenException [style=dashed, label="throws"];
+
+    DeliveryDispatcher -> {CheckoutRepository BillingModule};
+    DeliveryDispatcher -> Checkout [style=dashed];
+    BillingModule -> Checkout [style=dashed];
+    CheckoutRepository -> Checkout [style=dashed];
+    Checkout -> CheckoutStatus [style=dashed];
+    BillingModule -> PaymentException [style=dashed, label="throws"];
+
+    ChainProgressRepository -> ChainProgress [style=dashed];
+    ChainProgress -> ChainStatus [style=dashed];
+
+    {
+        OrderRepository
+        KitchenRepository
+        CheckoutRepository
+        ChainProgressRepository
+    } -> JsonFiles [style=dashed];
+}
