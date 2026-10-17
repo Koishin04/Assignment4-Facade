@@ -1,296 +1,93 @@
 # Restaurant Kitchen
 
-Software Design Patterns — Assignment 4, variant 14.
+**Software Design Patterns — Assignment 4**
 
-## About
+## Description
 
-Restaurant Kitchen is a Java console application for delivery orders.
-It uses the Facade pattern to connect three independent subsystems:
+Restaurant Kitchen is a simple Java console application using the Facade Design Pattern.
 
-| Stage | Subsystem | Main work |
-|---|---|---|
-| A | Orders and inventory | Validate the order and reserve ingredients |
-| B | Kitchen | Select a suitable free station and check readiness |
-| C | Billing and delivery | Process a test payment and register delivery |
+The system manages restaurant orders, kitchen stations, payments, and delivery.
 
-One order contains one dish, a positive number of portions and a delivery address.
-The program supports Burger, Pizza and Pasta. It does not physically cook food,
-contact a bank or call a courier service.
+## Design Pattern
 
-## Tools
+I used the **Facade Pattern** to make the system easier to use.
 
-Java 17, Maven, Jackson, JUnit 5 and JaCoCo.
+The project has three subsystems:
 
-## Run
+- **A — Order:** Checks orders and ingredients.
+- **B — Kitchen:** Finds a free kitchen station and checks readiness.
+- **C — Billing:** Processes payment and registers delivery.
 
-Open a terminal in the project folder, where `pom.xml` is located.
+`RestaurantFacade` connects these three subsystems.
 
-```powershell
+`AdminFacade` helps manage and check the system.
+
+## Features
+
+- Create orders for Burger, Pizza, and Pasta.
+- Check available ingredients.
+- Assign kitchen stations.
+- Process test payments.
+- Save data in JSON files.
+- Cancel orders when an error happens.
+- Recover unfinished orders after restarting.
+
+## Technologies
+
+- Java 17
+- Maven
+- Jackson JSON
+- JUnit 5
+- JaCoCo
+
+## How to Run
+
+Open the terminal in the project folder.
+
+Run the application:
+
+```bash
 mvn clean compile exec:java
 ```
 
-On Windows, the same command is available through:
+Run tests:
 
-```powershell
-.\run.cmd
-```
-
-Maven needs access to its repositories when dependencies are downloaded for the first time.
-
-## Tests and coverage
-
-```powershell
+```bash
 mvn clean verify
 ```
 
-On Windows:
+## Error Handling
 
-```powershell
-.\test.cmd
-```
+The system handles three main errors:
 
-The JaCoCo report is generated at:
-
-```text
-target/site/jacoco/index.html
-```
-
-The coverage target is at least 80% of lines in each of the `order`, `kitchen`,
-`billing` and `facade` packages. The POM contains a JaCoCo rule for these packages.
-Use the report from your own run to check the measured result; no measured
-coverage percentage is claimed here.
-
-Tests cover status transitions, input validation, independent subsystem use,
-both compensation depths and recovery after reopening the stores.
-Tests that use files receive separate temporary directories through `@TempDir`.
-Assertions check the result automatically.
-
-`assertIngredientsWereRestored()` is a small domain-specific test helper.
-It checks the saved cancellation status and the available ingredients.
-Tests and related implementation changes should be committed together.
-
-## Project structure
-
-```text
-Assignment4-Facade/
-├── pom.xml
-├── README.md
-├── .gitignore
-├── run.cmd
-├── test.cmd
-├── docs/
-│   ├── UML.dot
-│   ├── UML.svg
-│   └── UML.png
-└── src/
-    ├── main/java/restaurant/
-    │   ├── Main.java
-    │   ├── order/
-    │   ├── kitchen/
-    │   ├── billing/
-    │   ├── facade/
-    │   ├── chain/
-    │   └── storage/
-    └── test/java/restaurant/
-        ├── order/
-        ├── kitchen/
-        ├── billing/
-        ├── facade/
-        └── chain/
-```
-
-`data-v2/` is created when the application saves data.
-`target/` is created during the Maven build.
-Neither directory should be committed to Git.
-
-## Menu, stock and stations
-
-These are fixed demo values, not prices from a real restaurant.
-Amounts are whole tenge. The code does not add a separate delivery fee.
-
-| Dish | Price, KZT | Ingredients for one portion | Station |
-|---|---:|---|---|
-| Burger | 2500 | 1 bun, 1 patty, 1 cheese | ST-01 |
-| Pizza | 3200 | 1 dough, 2 tomato, 2 cheese | ST-02 |
-| Pasta | 2700 | 1 pasta, 1 tomato, 1 cheese | ST-03 |
-
-Initial stock: 12 buns, 12 patties, 30 cheese portions, 10 dough portions,
-30 tomato portions and 10 pasta portions.
-
-Each station accepts one active task at a time. A task can contain several
-portions of the same dish. A free Pizza station cannot take a Burger task.
-After a successful order, the station stays occupied until its kitchen task
-is marked `FINISHED` using menu option 8.
-
-## Main classes
-
-| Package | Classes and responsibilities |
-|---|---|
-| `order` | `Order` stores the order and its status. `OrderQueue` manages reservations. `InventoryChecker` calculates recipes and available stock. `OrderRepository` reads and saves orders. |
-| `kitchen` | `KitchenTask` stores a task and its status. `CookingStationAllocator` manages station assignments. `QualityChecker` checks the dish, quantity and station availability. `KitchenRepository` reads and saves tasks. |
-| `billing` | `Checkout` stores payment and delivery data. `BillingModule` calculates prices and applies the test payment result. `DeliveryDispatcher` coordinates payment and delivery registration. `CheckoutRepository` reads and saves checkouts. |
-| `facade` | `RestaurantFacade` runs the chain, recovery and compensation. `AdminFacade` provides inspection, demo station controls, manual compensation and task completion. |
-| `chain` | `ChainProgress` stores the request, payment choice, chain status and event history. `ChainProgressRepository` reads and saves it. |
-| `storage` | `JsonFiles` provides shared JSON reading and writing. It contains no restaurant business rules. |
-
-Each subsystem has four working classes, one custom exception class and a status enum.
-A, B and C do not import each other's classes. Their services meet in the facades.
-
-## Order workflow
-
-```text
-A: reserve ingredients
-        ↓
-B: select and reserve a suitable station
-        ↓
-C: accept test payment and register delivery
-        ↓
-Confirm A and B
-        ↓
-COMPLETED
-```
-
-`RestaurantFacade.start(dish, quantity, address, approved, steps)` starts an order.
-`steps = 1` pauses after A, `steps = 2` pauses after B, and `steps = 3` runs the full chain.
-
-`DISPATCHED` means delivery is registered. It does not mean the food has arrived.
-
-## Failures and compensation
-
-| Failure | Saved result |
-|---|---|
-| A: not enough ingredients | The order is `REJECTED`. B and C do not start. |
-| B: the suitable station is busy | The kitchen task is `REJECTED`. A is cancelled and its ingredients become available. |
-| C: test payment is declined | The checkout is `FAILED`. B is cancelled first, then A. The chain becomes `COMPENSATED`. |
-
-Compensation is a new saved action. It is not a database transaction rollback.
-The event history shows `B_CANCELLED` before `A_CANCELLED` for payment decline.
-Manual compensation is refused after payment has been accepted; that order
-must be resumed instead.
-
-## Saved data and restart
-
-The default storage directory is `data-v2`, relative to the working directory.
-Files appear when the corresponding records are first saved.
-Do not create empty JSON files manually or copy JSON from an older project version.
-
-| File | Contents |
-|---|---|
-| `orders.json` | Orders, statuses and exact ingredient reservations |
-| `kitchen.json` | Kitchen tasks, stations and statuses |
-| `checkouts.json` | Amounts, addresses, payment statuses and delivery IDs |
-| `chains.json` | Original requests, payment choices, progress and event history |
-
-Available stock is calculated from fixed initial stock minus reservations of
-saved `RESERVED` and `CONFIRMED` orders. Confirmed reservations represent consumed
-ingredients. Cancelled orders do not reduce available stock. This avoids adding
-ingredients a second time during repeated cancellation.
-
-Station occupancy is calculated from saved `READY` and `CONFIRMED` tasks.
-Repositories read saved records again on each operation.
-
-Recovery is selected through menu option 3 or 4; it does not run automatically
-when the application starts. It reads subsystem records and chain progress to
-continue unfinished work. A saved `PAID` checkout continues to delivery registration
-without another payment. Saved compensation can continue after a restart.
-
-The JSON helper writes a temporary file and requests an atomic replacement.
-The four files are not one shared transaction. The application is designed for
-one running instance. It does not support concurrent processes or guarantee
-recovery from disk corruption or hardware failure.
-
-## Live demonstration
-
-Choose option 2 to inspect saved state after any scenario.
-Use the exact dish names `Burger`, `Pizza` or `Pasta`.
-
-| Scenario | Actions |
-|---|---|
-| Success | Choose 1. Enter `Burger`, `2`, an address, `y`, `3`. The final chain status is `COMPLETED`. |
-| A failure | On a fresh store, choose 1 and order `Burger` × `13`, with `y`, `3`. There are not enough buns or patties. |
-| B failure | Choose 5 to occupy all stations. Then choose 1 and order `Burger` × `1`, with `y`, `3`. A is compensated. |
-| C failure | With a free suitable station and enough stock, choose 1 and order `Pasta` × `1`, with `n`, `3`. B is cancelled before A. |
-| Restart | Create an order with `steps` set to 1 or 2. Choose 0, start the application again, then choose 4 to recover unfinished orders. |
-| Manual compensation | Pause an unpaid order, copy its ID and choose 7. |
-| Finish kitchen work | After a completed order, choose 8 and enter its ID. This frees the station but does not restore consumed ingredients. |
-
-Option 5 creates saved `DEMO-` kitchen tasks for currently free stations.
-Option 6 releases only those demo tasks. It does not release customer tasks.
-Finish customer tasks with option 8 or use a fresh store before a new demonstration.
-
-## Reset the demo data
-
-Stop the application first. Rename `data-v2` to an unused backup name, for example:
-
-```powershell
-Rename-Item -Path .\data-v2 -NewName data-v2-backup
-```
-
-Use another backup name if that folder already exists.
-Start the application again to use a fresh store.
-Do not reset data while the application is running.
-
-## Principle of Least Knowledge
-
-Without a facade, client code must work with each subsystem and know the order
-of calls. This fragment shows only the successful path:
-
-```java
-Path data = Path.of("data-v2");
-OrderQueue orders = new OrderQueue(data);
-CookingStationAllocator kitchen = new CookingStationAllocator(data);
-DeliveryDispatcher billing = new DeliveryDispatcher(data);
-String id = UUID.randomUUID().toString();
-
-orders.reserve(id, "Burger", 2, "Astana");
-kitchen.prepare(id, "Burger", 2);
-billing.complete(id, "Burger", 2, "Astana", true);
-orders.confirm(id);
-kitchen.confirm(id);
-```
-
-The client would also need progress saving and compensation logic.
-
-With the facade, the client asks for one order operation:
-
-```java
-RestaurantFacade restaurant = new RestaurantFacade(Path.of("data-v2"));
-restaurant.start("Burger", 2, "Astana", true, 3);
-```
-
-The client does not need to coordinate inventory, kitchen and billing directly.
+1. **Not enough ingredients:** The order is rejected.
+2. **Kitchen station is busy:** The order is cancelled and ingredients are released.
+3. **Payment declined:** The kitchen task is cancelled first, then the ingredient reservation is cancelled.
 
 ## Facade vs Adapter
 
-This project needs a Facade because the client needs a simple way to run several
-subsystems in the correct order. `RestaurantFacade` handles A, B and C, saves
-progress and starts compensation when a later step fails. `AdminFacade` provides
-a smaller interface for inspection and administrative operations.
+Facade makes a complex system easier to use.
 
-An Adapter changes an incompatible interface to match what a client expects.
-Here, the main problem is not interface compatibility. It is coordinating the
-order workflow and hiding its internal steps. Therefore, the reason for using
-Facade is its purpose, not the number of classes.
+Adapter helps two incompatible interfaces work together.
 
-## UML
+I chose Facade because my application needs to connect three subsystems in one simple workflow.
 
-![Restaurant Kitchen class diagram](docs/UML.svg)
+## Principle of Least Knowledge
 
-The diagram shows all application classes and enums with selected members.
-Getters, constructors and minor dependencies are omitted for readability.
-Solid arrows show stored references. Dashed arrows show use, creation or thrown
-exceptions. Empty triangle arrows show inheritance.
+Without Facade, the client needs to work with Order, Kitchen, and Billing separately.
 
-`docs/UML.dot` is the editable Graphviz source.
-`docs/UML.svg` is the vector diagram; `docs/UML.png` is the image version.
-Graphviz is only needed to render changes to the diagram, not to run the application:
+With Facade, the client only needs to call one method:
 
-```powershell
-dot -Tsvg docs/UML.dot -o docs/UML.svg
-dot -Tpng docs/UML.dot -o docs/UML.png
+```java
+restaurant.start("Burger", 2, "Astana", true, 3);
 ```
 
-## Course materials
+This makes the code simpler and reduces dependencies.
 
-Assignment 4: Facade Over a Three-Stage Chain, With Persistence and a Live Demo.
-Lecture 6: Facade, Principle of Least Knowledge and clean tests.
+## UML Diagram
+
+The UML class diagram is in the `docs` folder.
+
+## Conclusion
+
+In this assignment, I learned how the Facade Pattern works in Java. I also learned how to connect independent subsystems, save data in JSON files, handle errors, and write unit tests.
